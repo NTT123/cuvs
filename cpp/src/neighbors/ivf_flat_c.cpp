@@ -117,6 +117,21 @@ void _extend(cuvsResources_t res,
 
   cuvs::neighbors::ivf_flat::extend(*res_ptr, vectors_mds, indices_mds, index_ptr);
 }
+
+template <typename T, typename IdxT>
+void _get_centers(cuvsResources_t res, cuvsIvfFlatIndex index, DLManagedTensor* centers)
+{
+  auto res_ptr   = reinterpret_cast<raft::resources*>(res);
+  auto index_ptr = reinterpret_cast<cuvs::neighbors::ivf_flat::index<T, IdxT>*>(index.addr);
+  
+  using centers_mdspan_type = raft::device_matrix_view<float, IdxT, raft::row_major>;
+  auto centers_mds = cuvs::core::from_dlpack<centers_mdspan_type>(centers);
+  // Copy the centers from the index to the output tensor
+  raft::copy(centers_mds.data_handle(),
+             index_ptr->centers().data_handle(),
+             index_ptr->centers().size(),
+             raft::resource::get_cuda_stream(*res_ptr));
+}
 }  // namespace
 
 extern "C" cuvsError_t cuvsIvfFlatIndexCreate(cuvsIvfFlatIndex_t* index)
@@ -304,6 +319,23 @@ extern "C" cuvsError_t cuvsIvfFlatExtend(cuvsResources_t res,
       _extend<int8_t, int64_t>(res, new_vectors, new_indices, *index);
     } else if (index->dtype.code == kDLUInt && index->dtype.bits == 8) {
       _extend<uint8_t, int64_t>(res, new_vectors, new_indices, *index);
+    } else {
+      RAFT_FAIL("Unsupported index dtype: %d and bits: %d", index->dtype.code, index->dtype.bits);
+    }
+  });
+}
+
+extern "C" cuvsError_t cuvsIvfFlatGetCenters(cuvsResources_t res,
+                                             cuvsIvfFlatIndex_t index,
+                                             DLManagedTensor* centers)
+{
+  return cuvs::core::translate_exceptions([=] {
+    if (index->dtype.code == kDLFloat && index->dtype.bits == 32) {
+      _get_centers<float, int64_t>(res, *index, centers);
+    } else if (index->dtype.code == kDLInt && index->dtype.bits == 8) {
+      _get_centers<int8_t, int64_t>(res, *index, centers);
+    } else if (index->dtype.code == kDLUInt && index->dtype.bits == 8) {
+      _get_centers<uint8_t, int64_t>(res, *index, centers);
     } else {
       RAFT_FAIL("Unsupported index dtype: %d and bits: %d", index->dtype.code, index->dtype.bits);
     }

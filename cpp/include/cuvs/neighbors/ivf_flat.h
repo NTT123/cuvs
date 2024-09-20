@@ -339,6 +339,22 @@ cuvsError_t cuvsIvfFlatExtend(cuvsResources_t res,
                               DLManagedTensor* new_vectors,
                               DLManagedTensor* new_indices,
                               cuvsIvfFlatIndex_t index);
+
+/**
+ * @defgroup ivf_flat_c_index_get_centers IVF-Flat index get centers
+ * @{
+ */
+/**
+ * @brief Get the cluster centers of the IVF-Flat index.
+ *
+ * @param[in] res cuvsResources_t opaque C handle
+ * @param[in] index IVF-Flat index
+ * @param[out] centers DLManagedTensor* to store the cluster centers
+ * @return cuvsError_t
+ */
+cuvsError_t cuvsIvfFlatGetCenters(cuvsResources_t res,
+                                  cuvsIvfFlatIndex_t index,
+                                  DLManagedTensor* centers);
 /**
  * @}
  */

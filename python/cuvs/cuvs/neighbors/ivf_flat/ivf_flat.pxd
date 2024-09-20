@@ -85,3 +85,9 @@ cdef extern from "cuvs/neighbors/ivf_flat.h" nogil:
                                   DLManagedTensor* new_vectors,
                                   DLManagedTensor* new_indices,
                                   cuvsIvfFlatIndex_t index)
+
+
+    cuvsError_t cuvsIvfFlatGetCenters(cuvsResources_t res,
+                                      cuvsIvfFlatIndex_t index,
+                                      DLManagedTensor* centers)
+

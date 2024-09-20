@@ -22,6 +22,7 @@ from .ivf_flat import (
     load,
     save,
     search,
+    get_centers
 )
 
 __all__ = [
@@ -33,4 +34,5 @@ __all__ = [
     "load",
     "save",
     "search",
+    "get_centers",
 ]

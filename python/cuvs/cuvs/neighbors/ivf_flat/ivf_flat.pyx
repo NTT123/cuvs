@@ -363,6 +363,64 @@ def search(SearchParams search_params,
 
 
 @auto_sync_resources
+def get_centers(Index index, n_lists, dim, dtype, resources=None):
+    """
+    Returns the cluster centers of the IVF-Flat index.
+
+    Parameters
+    ----------
+    index : Index
+        Trained IVF-Flat index.
+    n_lists : int
+        Number of clusters in the index.
+    dim : int
+        Dimensionality of the vectors.
+    dtype : numpy.dtype, optional
+        Data type of the centers. Default is numpy.float32.
+    {resources_docstring}
+
+    Returns
+    -------
+    centers : device_ndarray
+        A device_ndarray containing the cluster centers.
+
+    Examples
+    --------
+    >>> import cupy as cp
+    >>> from cuvs.neighbors import ivf_flat
+    >>> n_samples = 50000
+    >>> n_features = 50
+    >>> n_lists = 1000  # Number of clusters
+    >>> dataset = cp.random.random_sample((n_samples, n_features),
+    ...                                   dtype=cp.float32)
+    >>> # Build index
+    >>> index_params = ivf_flat.IndexParams(n_lists=n_lists)
+    >>> index = ivf_flat.build(index_params, dataset)
+    >>> # Get cluster centers
+    >>> centers = ivf_flat.get_centers(index, n_lists, n_features, 'float32')
+    """
+    if not index.trained:
+        raise ValueError("Index needs to be built before getting centers.")
+
+    cdef cuvsResources_t res = <cuvsResources_t>resources.get_c_obj()
+    cdef cydlpack.DLManagedTensor* centers_dlpack
+
+    # Create a device_ndarray to hold the centers
+    centers = device_ndarray.empty((n_lists, dim), dtype=dtype)
+    centers_cai = wrap_array(centers)
+    centers_dlpack = cydlpack.dlpack_c(centers_cai)
+
+    with cuda_interruptible():
+        check_cuvs(cuvsIvfFlatGetCenters(
+            res,
+            index.index,
+            centers_dlpack
+        ))
+
+    return centers
+
+
+@auto_sync_resources
 def save(filename, Index index, bool include_dataset=True, resources=None):
     """
     Saves the index to a file.
